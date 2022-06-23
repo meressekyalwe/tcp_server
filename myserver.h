@@ -4,30 +4,24 @@
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QSqlDatabase>
 
 
-class MyServer : public QTcpServer
+class MyServer : public QObject
 {
-    Q_OBJECT
+ Q_OBJECT
 
 public:
-
-    explicit MyServer(QObject *parent = nullptr);
-
-    MyServer(int nPort);
-
-    void incommingConnection(int handle);
+   explicit MyServer(QObject *parent = 0);
 
 public slots:
-
-    void onReadyRead();
-
-    void onDisconnected();
+   void slotNewConnection();
+   void slotServerRead();
+   void slotClientDisconnected();
+   void onClientData();
 
 private:
-
-   QTcpSocket* tcpSocket;
+   QTcpServer* mTcpServer;
+   QTcpSocket* mTcpSocket;
 };
 
 #endif // MYSERVER_H

@@ -1,65 +1,49 @@
 #include "myserver.h"
-#include <QTcpServer>
-#include <QString>
-#include <QTcpSocket>
-#include <QDataStream>
-#include <QTime>
-#include <QSqlDatabase>
-#include <QSqlQuery>
-#include <QtSql/QtSql>
-#include <QSqlError>
 
+#include <QDebug>
+#include <QCoreApplication>
 
-MyServer::MyServer(QObject *parent)
+MyServer::MyServer(QObject *parent) : QObject(parent)
 {
-    if (listen(QHostAddress::Any, 80))
-    {
-        qDebug() << "Listening";
-    }
+    mTcpServer = new QTcpServer(this);
 
-    else
-    {
-        qDebug() << "Error while starting " << errorString();
+    connect(mTcpServer, &QTcpServer::newConnection, this, &MyServer::slotNewConnection);
+
+    if(!mTcpServer->listen(QHostAddress::Any, 8080)){
+        qDebug() << "server is not started";
+    } else {
+        qDebug() << "server is started";
     }
 }
 
-MyServer::MyServer(int nPort)
+void MyServer::slotNewConnection()
 {
-    if (listen(QHostAddress::Any, nPort))
+    mTcpSocket = mTcpServer->nextPendingConnection();
+
+    mTcpSocket->write("Successfully established a connection with the server !\r\n");
+
+    connect(mTcpSocket, &QTcpSocket::readyRead, this, &MyServer::slotServerRead);
+    connect(mTcpSocket, &QTcpSocket::disconnected, this, &MyServer::slotClientDisconnected);
+}
+
+void MyServer::slotServerRead()
+{
+    while(mTcpSocket->bytesAvailable() > 0)
     {
-        qDebug() << "Listening";
-    }
+        QByteArray array = mTcpSocket->readAll();
 
-    else
-    {
-        qDebug() << "Error while starting " << errorString();
+        mTcpSocket->write(array);
     }
 }
 
-void MyServer::incommingConnection(int handle)
+void MyServer::slotClientDisconnected()
 {
-    tcpSocket = new QTcpSocket();
-
-    tcpSocket->setSocketDescriptor(handle);
-
-    connect(tcpSocket, &QTcpSocket::readyRead, this, &MyServer::onReadyRead);
-    connect(tcpSocket, &QTcpSocket::disconnected, this, &MyServer::onDisconnected);
-
-    qDebug() << "connection in comming";
+    mTcpSocket->close();
 }
 
-void MyServer::onReadyRead()
+void MyServer::onClientData()
 {
-    qDebug() << tcpSocket->readAll();
+    //QByteArray array = mTcpSocket->readAll();
 
-    QString response = "HTTP/1.1 200 OK\r\n\r\n%1";
-    tcpSocket->write( response.arg(QTime::currentTime().toString()).toUtf8());
-    tcpSocket->disconnectFromHost();
-}
-
-void MyServer::onDisconnected()
-{
-    tcpSocket->close();
-    tcpSocket->deleteLater();
 }
 
